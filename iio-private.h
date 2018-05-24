@@ -25,6 +25,7 @@
 #include "iio-config.h"
 
 #include <stdbool.h>
+#include <string.h>
 
 #ifdef _MSC_BUILD
 #define inline __inline
@@ -138,6 +139,11 @@ struct iio_backend_ops {
 	int (*set_timeout)(struct iio_context *ctx, unsigned int timeout);
 };
 
+/* Below the structures are a few functions to do sorting for various
+ * iio structures. For more info, see the qsort(3) man page.
+ * If the structures are updated, the sort functions may need to be updated.
+ */
+
 struct iio_context_pdata;
 struct iio_device_pdata;
 struct iio_channel_pdata;
@@ -183,6 +189,30 @@ struct iio_channel {
 	unsigned int number;
 };
 
+static inline int qsort_iio_channel(const void *p1, const void *p2)
+{
+	struct iio_channel *tmp1 = *(struct iio_channel **)p1;
+	struct iio_channel *tmp2 = *(struct iio_channel **)p2;
+	/* qsort channels by index */
+	long ch1 = tmp1->index;
+	long ch2 = tmp2->index;
+
+	if (ch1 == ch2 && ch1 >= 0) {
+		ch1 = tmp1->format.shift;
+		ch2 = tmp2->format.shift;
+	}
+
+	return (ch2 >= 0 && ((ch1 > ch2) || ch1 < 0));
+}
+
+static inline int qsort_iio_channel_attr(const void *p1, const void *p2)
+{
+	struct iio_channel_attr *tmp1 = (struct iio_channel_attr *)p1;
+	struct iio_channel_attr *tmp2 = (struct iio_channel_attr *)p2;
+	/* qsort channel attributes by name */
+	return strcmp(tmp1->name, tmp2->name);
+}
+
 struct iio_device {
 	const struct iio_context *ctx;
 	struct iio_device_pdata *pdata;
@@ -205,6 +235,30 @@ struct iio_device {
 	uint32_t *mask;
 	size_t words;
 };
+
+static inline int qsort_iio_device(const void *p1, const void *p2)
+{
+	struct iio_device *tmp1 = *(struct iio_device **)p1;
+	struct iio_device *tmp2 = *(struct iio_device **)p2;
+	/* qsort devices by ID */
+	return strcmp(tmp1->id, tmp2->id);
+}
+
+static inline int qsort_iio_device_attr(const void *p1, const void *p2)
+{
+	const char *tmp1 = *(const char **)p1;
+	const char *tmp2 = *(const char **)p2;
+	/* qsort device attributes by name */
+	return strcmp(tmp1, tmp2);
+}
+
+static inline int qsort_iio_buffer_attr(const void *p1, const void *p2)
+{
+	const char *tmp1 = *(const char **)p1;
+	const char *tmp2 = *(const char **)p2;
+	/* qsort buffer attributes by name */
+	return strcmp(tmp1, tmp2);
+}
 
 struct iio_buffer {
 	const struct iio_device *dev;
